@@ -4,7 +4,6 @@ import google.generativeai as genai
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# تنظیم لاگ‌گیری دقیق
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -14,18 +13,30 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if not TOKEN or not GEMINI_API_KEY:
     raise ValueError("متغیرهای محیطی به درستی تنظیم نشده‌اند!")
 
-# پیکربندی Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 
-# تلاش برای مدل‌های مختلف (اول فلش، بعد پرو)
-try:
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    # یک درخواست تستی برای اعتبارسنجی کلید
-    model.generate_content("test")
-    logger.info("✅ مدل gemini-1.5-flash فعال شد")
-except Exception as e:
-    logger.warning(f"⚠️ مدل فلش کار نکرد، رفتیم سراغ gemini-pro: {e}")
-    model = genai.GenerativeModel("gemini-pro")
+# لیست مدل‌های جدید به ترتیب اولویت
+MODELS = [
+    "gemini-2.0-flash-exp",
+    "gemini-2.5-pro-exp-03-25",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+]
+
+model = None
+for model_name in MODELS:
+    try:
+        test_model = genai.GenerativeModel(model_name)
+        # تست با یک درخواست ساده
+        test_model.generate_content("test")
+        model = test_model
+        logger.info(f"✅ مدل {model_name} با موفقیت فعال شد")
+        break
+    except Exception as e:
+        logger.warning(f"⚠️ مدل {model_name} در دسترس نیست: {e}")
+
+if model is None:
+    raise RuntimeError("هیچ مدلی از Gemini در دسترس نیست! کلید API را بررسی کن.")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("سلام! من یک ربات هوشمند هستم. هر سوالی داری، بپرس.")
@@ -38,7 +49,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(f"پاسخ به: {user_message[:30]}")
     except Exception as e:
         logger.error(f"❌ خطای Gemini: {e}", exc_info=True)
-        # ارسال متن دقیق خطا به تلگرام برای فهمیدن مشکل
         await update.message.reply_text(f"❌ خطا: {str(e)}")
         return
 
