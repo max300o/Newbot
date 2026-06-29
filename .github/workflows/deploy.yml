@@ -1,0 +1,44 @@
+name: Deploy Telegram Bot
+
+on:
+  push:
+    branches: [ main, master ]   # هر دو برند رو پشتیبانی می‌کنه
+  workflow_dispatch:             # دکمه‌ی Run workflow فعال میشه
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: دریافت کد از مخزن
+        uses: actions/checkout@v4
+
+      - name: نصب Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: ارتقاء pip و نصب کتابخانه‌های سیستمی
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+          pip install --upgrade pip
+
+      - name: نصب کتابخانه‌های مورد نیاز
+        run: |
+          if [ ! -f requirements.txt ]; then
+            echo "❌ فایل requirements.txt وجود ندارد!"
+            exit 1
+          fi
+          pip install -r requirements.txt
+
+      - name: اجرای ربات
+        run: |
+          if [ ! -f bot.py ]; then
+            echo "❌ فایل bot.py وجود ندارد!"
+            exit 1
+          fi
+          python bot.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
