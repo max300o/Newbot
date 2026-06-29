@@ -15,28 +15,25 @@ if not TOKEN or not GEMINI_API_KEY:
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# لیست مدل‌های جدید به ترتیب اولویت
-MODELS = [
-    "gemini-2.0-flash-exp",
-    "gemini-2.5-pro-exp-03-25",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
-]
+# دریافت لیست مدل‌های پشتیبانی‌شده از سرور گوگل
+try:
+    all_models = genai.list_models()
+    available_models = [
+        m.name for m in all_models 
+        if 'generateContent' in m.supported_generation_methods
+    ]
+    logger.info(f"📋 مدل‌های موجود: {available_models}")
+except Exception as e:
+    logger.error(f"❌ خطا در دریافت لیست مدل‌ها: {e}")
+    available_models = []
 
-model = None
-for model_name in MODELS:
-    try:
-        test_model = genai.GenerativeModel(model_name)
-        # تست با یک درخواست ساده
-        test_model.generate_content("test")
-        model = test_model
-        logger.info(f"✅ مدل {model_name} با موفقیت فعال شد")
-        break
-    except Exception as e:
-        logger.warning(f"⚠️ مدل {model_name} در دسترس نیست: {e}")
+if not available_models:
+    raise RuntimeError("هیچ مدل قابل‌استفاده‌ای یافت نشد. کلید API یا دسترسی خود را بررسی کنید.")
 
-if model is None:
-    raise RuntimeError("هیچ مدلی از Gemini در دسترس نیست! کلید API را بررسی کن.")
+# استفاده از اولین مدل موجود (معمولاً gemini-2.0-flash-exp یا مشابه)
+model_name = available_models[0]
+model = genai.GenerativeModel(model_name)
+logger.info(f"✅ مدل انتخاب‌شده: {model_name}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("سلام! من یک ربات هوشمند هستم. هر سوالی داری، بپرس.")
